@@ -20,6 +20,16 @@ import java.util.List;
 import java.util.Map;
 
 public class Hello {
+	
+	enum SteppingMode {
+		
+		BREAK,
+		
+		RUN,
+		
+		STEPPING,
+		
+	}
 
 	private static String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
 
@@ -37,10 +47,10 @@ public class Hello {
 
 	private static String fileName;
 
+	private static SteppingMode steppingMode;
+
 	private static void hello(String className, String methodName) throws IOException {
 		System.out.println(String.format("Invoking %s in %s", methodName, className));
-		sendStatus(lastRunCommand, lastRunTransactionId, "break");
-		processPacketsUntilRunIsFound();
 		try {
 			Class<?> klass = Class.forName(className);
 			Method method = klass.getMethod(methodName, new Class<?>[0]);
@@ -59,6 +69,12 @@ public class Hello {
 		} catch (InvocationTargetException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static void handleBreak() throws IOException {
+		steppingMode = SteppingMode.BREAK;
+		sendStatus(lastRunCommand, lastRunTransactionId, "break");
+		processPacketsUntilRunIsFound();
 	}
 
 	/**
@@ -85,6 +101,7 @@ public class Hello {
 			port = Integer.parseInt(args[2]);
 			sessionId = args[3];
 
+			steppingMode = SteppingMode.BREAK;
 			connectToDbgpServer(port, sessionId, fileName);
 		}
 		try {
@@ -93,6 +110,8 @@ public class Hello {
 			try {
 				lineNo = 1;
 				while (null != (currentCmd = reader.readLine())) {
+					if (lineNo == 1 || steppingMode == SteppingMode.STEPPING)
+						handleBreak();
 					if (currentCmd.startsWith("hello ")) {
 						String name = currentCmd.substring(6);
 						int pos = name.lastIndexOf('.');
@@ -165,15 +184,12 @@ public class Hello {
 	}
 
 	private static void processPacketsUntilRunIsFound() throws IOException {
-		while (true) {
+		while (steppingMode == SteppingMode.BREAK) {
 			String cmd = readPacket();
 			System.out.println("GOT CMD: " + cmd);
-			handleCommand(cmd);
 			if (cmd == null)
 				break;
-			if (cmd.startsWith("run")) {
-				break;
-			}
+			handleCommand(cmd);
 		}
 	}
 
@@ -209,6 +225,10 @@ public class Hello {
 			sendStatus(command, transactionId, "stopped");
 			socket.close();
 			System.exit(0);
+		} else if (command.equalsIgnoreCase("step_over")) {
+			steppingMode = SteppingMode.STEPPING;
+			lastRunCommand = command;
+			lastRunTransactionId = transactionId;
 		} else if (command.equalsIgnoreCase("stack_get")) {
 			sendPacket(String
 					.format(
@@ -218,6 +238,7 @@ public class Hello {
 		} else if (command.equalsIgnoreCase("run")) {
 			lastRunCommand = command;
 			lastRunTransactionId = transactionId;
+			steppingMode = SteppingMode.RUN;
 		} else {
 			System.out.println("Ignoring: " + command);
 			sendPacket(String
