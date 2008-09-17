@@ -91,7 +91,7 @@ public class Hello {
 			FileReader fileReader = new FileReader(fileName);
 			BufferedReader reader = new BufferedReader(fileReader);
 			try {
-				lineNo = 0;
+				lineNo = 1;
 				while (null != (currentCmd = reader.readLine())) {
 					if (currentCmd.startsWith("hello ")) {
 						String name = currentCmd.substring(6);
@@ -205,6 +205,10 @@ public class Hello {
 					.format(
 							"<response command=\"%s\" transaction_id=\"%d\" feature_name=\"%s\" supported=\"0\" />",
 							command, transactionId, values.get("-n")));
+		} else if (command.equalsIgnoreCase("stop")) {
+			sendStatus(command, transactionId, "stopped");
+			socket.close();
+			System.exit(0);
 		} else if (command.equalsIgnoreCase("stack_get")) {
 			sendPacket(String
 					.format(

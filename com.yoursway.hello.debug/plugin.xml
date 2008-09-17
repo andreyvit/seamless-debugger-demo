@@ -10,7 +10,7 @@
    <extension
          point="org.eclipse.dltk.debug.scriptDebugModel">
       <debugModel
-            debugModelId="com.yoursway.hello.debug.helloModel"
+            debugModelId="com.yoursway.hello.debug.model"
             natureId="com.yoursway.hello.core.nature"
             typeFactory="com.yoursway.hello.debug.HelloTypeFactory">
       </debugModel>
