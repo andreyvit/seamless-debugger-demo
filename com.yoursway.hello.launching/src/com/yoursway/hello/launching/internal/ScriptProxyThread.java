@@ -102,9 +102,14 @@ public class ScriptProxyThread implements IThread {
 	private void addScriptFrames(List<IStackFrame> frames)
 			throws DebugException {
 		IThread javaThread = getJavaThread();
-		if (!javaThread.isSuspended())
-			fakeScriptFrames = thread.getStackFrames();
 		IStackFrame[] originals = fakeScriptFrames;
+		if (javaThread.isSuspended())
+			originals = fakeScriptFrames;
+		else {
+			originals = thread.getStackFrames();
+			if (originals.length > 0)
+				fakeScriptFrames = originals;
+		}
 		for (IStackFrame original : originals) {
 			frames.add(new ScriptProxyFrame(this, (ScriptStackFrame) original));
 		}

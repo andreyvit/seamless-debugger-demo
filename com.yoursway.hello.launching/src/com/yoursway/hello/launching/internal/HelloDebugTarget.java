@@ -15,17 +15,20 @@ import org.eclipse.jdt.internal.debug.core.model.JDIDebugTarget;
 @SuppressWarnings("restriction")
 final class HelloDebugTarget extends ScriptDebugTarget {
 	
-	private final JDIDebugTarget javaTarget;
+	private JDIDebugTarget javaTarget;
 
 	HelloDebugTarget(String modelId,
 			IDbgpService dbgpService, String sessionId, ILaunch launch,
-			IProcess process, JDIDebugTarget javaTarget) throws CoreException {
+			IProcess process) throws CoreException {
 		super(modelId, dbgpService, sessionId, launch, process);
-		this.javaTarget = javaTarget;
 	}
 	
 	public IThread[] getOriginalThreads() throws DebugException {
 		return super.getThreads();
+	}
+	
+	public void setJavaTarget(JDIDebugTarget javaTarget) {
+		this.javaTarget = javaTarget;
 	}
 
 	@Override

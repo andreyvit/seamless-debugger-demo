@@ -122,76 +122,14 @@ public class HelloLaunchConfigurationDelegate extends
 		return DbgpSessionIdGenerator.generate();
 	}
 
-	protected IScriptDebugTarget addDebugTarget(ILaunch launch,
-			IDbgpService dbgpService, final JDIDebugTarget javaTarget)
+	protected HelloDebugTarget addDebugTarget(ILaunch launch,
+			IDbgpService dbgpService)
 			throws CoreException {
 
 		final HelloDebugTarget target = new HelloDebugTarget(getDebugModelId(),
-				dbgpService, sessionId, launch, null, javaTarget);
+				dbgpService, sessionId, launch, null);
 
 		launch.addDebugTarget(target);
-
-		DebugPlugin.getDefault().addDebugEventFilter(new IDebugEventFilter() {
-
-			public DebugEvent[] filterDebugEvents(DebugEvent[] events) {
-				List<DebugEvent> newEvents = new ArrayList<DebugEvent>();
-				for (DebugEvent event : events) {
-					newEvents.add(event);
-					DebugEvent newEvent = wrap(event);
-					if (newEvent != null)
-						newEvents.add(newEvent);
-				}
-				return newEvents.toArray(new DebugEvent[newEvents.size()]);
-			}
-
-			private DebugEvent wrap(DebugEvent event) {
-				System.out.println("EVENT: " + event);
-				Object source = event.getSource();
-				Object newSource = wrap(target, source);
-				if (newSource == null)
-					return null;
-				Object data = event.getData();
-				event = new DebugEvent(newSource, event.getKind(), event
-						.getDetail());
-				if (data != null)
-					System.out.println();
-				event.setData(data);
-				return event;
-			}
-
-			private Object wrap(final HelloDebugTarget target, Object source) {
-				Object newSource = null;
-				if (source instanceof ScriptProxyFrame)
-					return null;
-				if (source instanceof ScriptProxyThread)
-					return null;
-				if (source instanceof ScriptStackFrame)
-					newSource = wrapFrame(target, (ScriptStackFrame) source);
-				else if (source instanceof ScriptThread)
-					newSource = wrapThread(target, (IThread) source);
-				else if (source instanceof JDIDebugTarget)
-					newSource = target;
-				else if (source instanceof JDIThread)
-					try {
-						newSource = target.getThreads()[0];
-					} catch (DebugException e) {
-						e.printStackTrace();
-					}
-				return newSource;
-			}
-
-			private ScriptProxyFrame wrapFrame(final HelloDebugTarget target,
-					ScriptStackFrame frame) {
-				return new ScriptProxyFrame(wrapThread(target, frame
-						.getThread()), frame);
-			}
-
-			private ScriptProxyThread wrapThread(final HelloDebugTarget target,
-					IThread thread) {
-				return new ScriptProxyThread(thread, target, javaTarget);
-			}
-
-		});
 
 		return target;
 	}
@@ -210,20 +148,7 @@ public class HelloLaunchConfigurationDelegate extends
 			final ILaunch launch, IProgressMonitor monitor)
 			throws CoreException {
 		sessionId = getSessionId(configuration);
-		launchJava(configuration, mode, launch, monitor);
-		final ISourceLocator oldSourceLocator = launch.getSourceLocator();
-		launch.setSourceLocator(new ISourceLocator() {
-
-			public Object getSourceElement(IStackFrame stackFrame) {
-				Object element = oldSourceLocator.getSourceElement(stackFrame);
-				if (element != null)
-					return element;
-				return javaSourceLookupDirector.getSourceElement(stackFrame);
-			}
-
-		});
-
-		JDIDebugTarget debugTarget = (JDIDebugTarget) launch.getDebugTarget();
+		
 		DebugPlugin.getDefault().addDebugEventListener(
 				new IDebugEventSetListener() {
 
@@ -269,8 +194,87 @@ public class HelloLaunchConfigurationDelegate extends
 					abort(InterpreterMessages.errDbgpServiceNotAvailable, null);
 				}
 
-				final IScriptDebugTarget target = addDebugTarget(launch,
-						service, debugTarget);
+				final HelloDebugTarget target = addDebugTarget(launch,
+						service);
+				
+				launchJava(configuration, mode, launch, monitor);
+				final ISourceLocator oldSourceLocator = launch.getSourceLocator();
+				launch.setSourceLocator(new ISourceLocator() {
+
+					public Object getSourceElement(IStackFrame stackFrame) {
+						Object element = oldSourceLocator.getSourceElement(stackFrame);
+						if (element != null)
+							return element;
+						return javaSourceLookupDirector.getSourceElement(stackFrame);
+					}
+
+				});
+				
+				final JDIDebugTarget javaTarget = (JDIDebugTarget) launch.getDebugTargets()[1];
+				target.setJavaTarget(javaTarget);
+				
+				DebugPlugin.getDefault().addDebugEventFilter(new IDebugEventFilter() {
+
+					public DebugEvent[] filterDebugEvents(DebugEvent[] events) {
+						List<DebugEvent> newEvents = new ArrayList<DebugEvent>();
+						for (DebugEvent event : events) {
+							newEvents.add(event);
+							DebugEvent newEvent = wrap(event);
+							if (newEvent != null)
+								newEvents.add(newEvent);
+						}
+						return newEvents.toArray(new DebugEvent[newEvents.size()]);
+					}
+
+					private DebugEvent wrap(DebugEvent event) {
+						System.out.println("EVENT: " + event);
+						Object source = event.getSource();
+						Object newSource = wrap(target, source);
+						if (newSource == null)
+							return null;
+						Object data = event.getData();
+						event = new DebugEvent(newSource, event.getKind(), event
+								.getDetail());
+						if (data != null)
+							System.out.println();
+						event.setData(data);
+						return event;
+					}
+
+					private Object wrap(final HelloDebugTarget target, Object source) {
+						Object newSource = null;
+						if (source instanceof ScriptProxyFrame)
+							return null;
+						if (source instanceof ScriptProxyThread)
+							return null;
+						if (source instanceof ScriptStackFrame)
+							newSource = wrapFrame(target, (ScriptStackFrame) source);
+						else if (source instanceof ScriptThread)
+							newSource = wrapThread(target, (IThread) source);
+						else if (source instanceof JDIDebugTarget)
+							newSource = target;
+						else if (source instanceof JDIThread)
+							try {
+								newSource = target.getThreads()[0];
+							} catch (DebugException e) {
+								e.printStackTrace();
+							}
+						return newSource;
+					}
+
+					private ScriptProxyFrame wrapFrame(final HelloDebugTarget target,
+							ScriptStackFrame frame) {
+						return new ScriptProxyFrame(wrapThread(target, frame
+								.getThread()), frame);
+					}
+
+					private ScriptProxyThread wrapThread(final HelloDebugTarget target,
+							IThread thread) {
+						return new ScriptProxyThread(thread, target, javaTarget);
+					}
+
+				});
+
 
 				// Disable the output of the debugging engine process
 				launch.setAttribute(DebugPlugin.ATTR_CAPTURE_OUTPUT,
@@ -331,7 +335,7 @@ public class HelloLaunchConfigurationDelegate extends
 								extLibEntryBreakpoint.setPersisted(false);
 								extLibEntryBreakpoint.setEnabled(true);
 
-								launch.getDebugTarget().breakpointAdded(
+								javaTarget.breakpointAdded(
 										extLibEntryBreakpoint);
 
 								session.getExtendedCommands().execute(
