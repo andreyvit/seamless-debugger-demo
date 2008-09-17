@@ -53,7 +53,6 @@ import org.eclipse.dltk.launching.ScriptRuntime;
 import org.eclipse.jdt.debug.core.IJavaMethodBreakpoint;
 import org.eclipse.jdt.debug.core.JDIDebugModel;
 import org.eclipse.jdt.internal.debug.core.model.JDIDebugTarget;
-import org.eclipse.jdt.internal.debug.core.model.JDIStackFrame;
 import org.eclipse.jdt.internal.debug.core.model.JDIThread;
 import org.eclipse.jdt.internal.launching.JavaSourceLookupDirector;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
@@ -124,10 +123,11 @@ public class HelloLaunchConfigurationDelegate extends
 	}
 
 	protected IScriptDebugTarget addDebugTarget(ILaunch launch,
-			IDbgpService dbgpService) throws CoreException {
+			IDbgpService dbgpService, final JDIDebugTarget javaTarget)
+			throws CoreException {
 
 		final HelloDebugTarget target = new HelloDebugTarget(getDebugModelId(),
-				dbgpService, sessionId, launch, null);
+				dbgpService, sessionId, launch, null, javaTarget);
 
 		launch.addDebugTarget(target);
 
@@ -151,7 +151,8 @@ public class HelloLaunchConfigurationDelegate extends
 				if (newSource == null)
 					return null;
 				Object data = event.getData();
-				event = new DebugEvent(newSource, event.getKind(), event.getDetail());
+				event = new DebugEvent(newSource, event.getKind(), event
+						.getDetail());
 				if (data != null)
 					System.out.println();
 				event.setData(data);
@@ -160,10 +161,22 @@ public class HelloLaunchConfigurationDelegate extends
 
 			private Object wrap(final HelloDebugTarget target, Object source) {
 				Object newSource = null;
+				if (source instanceof ScriptProxyFrame)
+					return null;
+				if (source instanceof ScriptProxyThread)
+					return null;
 				if (source instanceof ScriptStackFrame)
 					newSource = wrapFrame(target, (ScriptStackFrame) source);
 				else if (source instanceof ScriptThread)
 					newSource = wrapThread(target, (IThread) source);
+				else if (source instanceof JDIDebugTarget)
+					newSource = target;
+				else if (source instanceof JDIThread)
+					try {
+						newSource = target.getThreads()[0];
+					} catch (DebugException e) {
+						e.printStackTrace();
+					}
 				return newSource;
 			}
 
@@ -175,7 +188,7 @@ public class HelloLaunchConfigurationDelegate extends
 
 			private ScriptProxyThread wrapThread(final HelloDebugTarget target,
 					IThread thread) {
-				return new ScriptProxyThread(thread, target);
+				return new ScriptProxyThread(thread, target, javaTarget);
 			}
 
 		});
@@ -191,7 +204,7 @@ public class HelloLaunchConfigurationDelegate extends
 	protected String getDebuggingEngineId() {
 		return ENGINE_ID;
 	}
-
+	
 	@Override
 	public void launch(ILaunchConfiguration configuration, String mode,
 			final ILaunch launch, IProgressMonitor monitor)
@@ -211,7 +224,6 @@ public class HelloLaunchConfigurationDelegate extends
 		});
 
 		JDIDebugTarget debugTarget = (JDIDebugTarget) launch.getDebugTarget();
-		IThread mainJavaThread = debugTarget.getThreads()[0];
 		DebugPlugin.getDefault().addDebugEventListener(
 				new IDebugEventSetListener() {
 
@@ -224,21 +236,7 @@ public class HelloLaunchConfigurationDelegate extends
 									try {
 										IStackFrame[] stackFrames = thread
 												.getStackFrames();
-										boolean found = false;
-										for (int i = 0; i < stackFrames.length; i++) {
-											JDIStackFrame frame = (JDIStackFrame) stackFrames[i];
-											String typeName = frame
-													.getReceivingTypeName();
-											if (typeName.startsWith("sun.")
-													|| typeName
-															.startsWith("java."))
-												continue;
-											if (typeName
-													.startsWith("com.yoursway.hello.interpreter."))
-												found = true;
-											break;
-										}
-										if (found) {
+										if (HelloLaunchConfigurationConstants.findInterpreterFrame(stackFrames) == 0) {
 											thread.resume();
 										}
 									} catch (DebugException e) {
@@ -272,7 +270,7 @@ public class HelloLaunchConfigurationDelegate extends
 				}
 
 				final IScriptDebugTarget target = addDebugTarget(launch,
-						service);
+						service, debugTarget);
 
 				// Disable the output of the debugging engine process
 				launch.setAttribute(DebugPlugin.ATTR_CAPTURE_OUTPUT,
