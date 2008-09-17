@@ -1,5 +1,5 @@
 
-package com.yoursway.hello;
+package com.yoursway.hello.interpreter;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

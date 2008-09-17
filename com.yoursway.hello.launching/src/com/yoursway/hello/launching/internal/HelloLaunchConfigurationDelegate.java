@@ -85,7 +85,7 @@ public class HelloLaunchConfigurationDelegate extends
 		wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_PROJECT_NAME,
 				"hello");
 		wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME,
-				"com.yoursway.hello.Hello");
+				"com.yoursway.hello.interpreter.Hello");
 		wc.setAttribute(
 				IJavaLaunchConfigurationConstants.ATTR_PROGRAM_ARGUMENTS,
 				getScriptLaunchPath(configuration)
@@ -168,8 +168,17 @@ public class HelloLaunchConfigurationDelegate extends
 							JDIThread thread = (JDIThread) ev.getSource();
 							try {
 								IStackFrame[] stackFrames = thread.getStackFrames();
-								JDIStackFrame firstFrame = (JDIStackFrame) stackFrames[0];
-								if (!firstFrame.getReceivingTypeName().startsWith("com.yoursway.hello.Test")) {
+								boolean found = false;
+								for (int i = 0; i < stackFrames.length; i++) {
+									JDIStackFrame frame = (JDIStackFrame) stackFrames[i];
+									String typeName = frame.getReceivingTypeName();
+									if (typeName.startsWith("sun.") || typeName.startsWith("java."))
+										continue;
+									if (typeName.startsWith("com.yoursway.hello.interpreter."))
+										found = true;
+									break;
+								}
+								if (found) {
 									thread.resume();
 								}
 							} catch (DebugException e) {
