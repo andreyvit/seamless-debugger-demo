@@ -23,11 +23,25 @@ public class Hello {
 	
 	enum SteppingMode {
 		
-		BREAK,
+		BREAK(false),
 		
-		RUN,
+		RUN(false),
 		
-		STEPPING,
+		STEP_OVER(true),
+		
+		STEP_INTO(true),
+		
+		;
+		
+		private final boolean isStepping;
+
+		private SteppingMode(boolean isStepping) {
+			this.isStepping = isStepping;
+		}
+		
+		public boolean isStepping() {
+			return isStepping;
+		}
 		
 	}
 
@@ -49,8 +63,16 @@ public class Hello {
 
 	private static SteppingMode steppingMode;
 
-	private static void hello(String className, String methodName) throws IOException {
+	private static boolean gotExec;
+
+	private static void invokeExternalLib(String className, String methodName, boolean isSteppingInto) throws IOException {
 		System.out.println(String.format("Invoking %s in %s", methodName, className));
+		if (isSteppingInto) {
+			gotExec = false;
+			sendPacket(String.format("<notify name=\"lib_call_coming\" class=\"%s\" method=\"%s\" />",
+					className, methodName));
+			processPacketsUntilExecIsCalled();
+		}
 		try {
 			Class<?> klass = Class.forName(className);
 			Method method = klass.getMethod(methodName, new Class<?>[0]);
@@ -110,14 +132,14 @@ public class Hello {
 			try {
 				lineNo = 1;
 				while (null != (currentCmd = reader.readLine())) {
-					if (lineNo == 1 || steppingMode == SteppingMode.STEPPING)
+					if (lineNo == 1 || steppingMode.isStepping())
 						handleBreak();
 					if (currentCmd.startsWith("hello ")) {
 						String name = currentCmd.substring(6);
 						int pos = name.lastIndexOf('.');
 						String className = name.substring(0, pos);
 						String methodName = name.substring(pos + 1);
-						hello(className, methodName);
+						invokeExternalLib(className, methodName, steppingMode == SteppingMode.STEP_INTO);
 					} else if (currentCmd.startsWith("bye")) {
 						System.out.println("Bye " + currentCmd.substring(3).trim());
 					} else {
@@ -192,6 +214,16 @@ public class Hello {
 			handleCommand(cmd);
 		}
 	}
+	
+	private static void processPacketsUntilExecIsCalled() throws IOException {
+		while (!gotExec) {
+			String cmd = readPacket();
+			System.out.println("GOT CMD: " + cmd);
+			if (cmd == null)
+				break;
+			handleCommand(cmd);
+		}
+	}
 
 	private static void handleCommand(String cmd) throws IOException {
 		List<String> args = new ArrayList<String>();
@@ -221,12 +253,22 @@ public class Hello {
 					.format(
 							"<response command=\"%s\" transaction_id=\"%d\" feature_name=\"%s\" supported=\"0\" />",
 							command, transactionId, values.get("-n")));
+		} else if (command.equalsIgnoreCase("exec")) {
+			gotExec = true;
+			sendPacket(String
+					.format(
+							"<response command=\"%s\" transaction_id=\"%d\" success=\"0\" />",
+							command, transactionId));
 		} else if (command.equalsIgnoreCase("stop")) {
 			sendStatus(command, transactionId, "stopped");
 			socket.close();
 			System.exit(0);
 		} else if (command.equalsIgnoreCase("step_over")) {
-			steppingMode = SteppingMode.STEPPING;
+			steppingMode = SteppingMode.STEP_OVER;
+			lastRunCommand = command;
+			lastRunTransactionId = transactionId;
+		} else if (command.equalsIgnoreCase("step_into")) {
+			steppingMode = SteppingMode.STEP_INTO;
 			lastRunCommand = command;
 			lastRunTransactionId = transactionId;
 		} else if (command.equalsIgnoreCase("stack_get")) {

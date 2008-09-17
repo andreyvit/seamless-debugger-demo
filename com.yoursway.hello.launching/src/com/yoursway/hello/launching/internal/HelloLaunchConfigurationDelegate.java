@@ -9,7 +9,10 @@
  *******************************************************************************/
 package com.yoursway.hello.launching.internal;
 
+import java.util.HashMap;
+
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.debug.core.DebugPlugin;
@@ -22,24 +25,30 @@ import org.eclipse.debug.core.model.IDebugTarget;
 import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.core.model.ISourceLocator;
 import org.eclipse.debug.core.model.IStackFrame;
+import org.eclipse.debug.core.model.IThread;
 import org.eclipse.dltk.core.IScriptProject;
 import org.eclipse.dltk.core.PreferencesLookupDelegate;
 import org.eclipse.dltk.dbgp.DbgpSessionIdGenerator;
+import org.eclipse.dltk.dbgp.IDbgpNotification;
+import org.eclipse.dltk.dbgp.IDbgpNotificationListener;
+import org.eclipse.dltk.dbgp.IDbgpNotificationManager;
+import org.eclipse.dltk.dbgp.IDbgpSession;
+import org.eclipse.dltk.dbgp.exceptions.DbgpException;
 import org.eclipse.dltk.debug.core.DLTKDebugPlugin;
-import org.eclipse.dltk.debug.core.ExtendedDebugEventDetails;
 import org.eclipse.dltk.debug.core.IDbgpService;
 import org.eclipse.dltk.debug.core.ScriptDebugManager;
 import org.eclipse.dltk.debug.core.model.IScriptDebugTarget;
-import org.eclipse.dltk.internal.debug.core.model.DbgpService;
-import org.eclipse.dltk.internal.debug.core.model.DebugEventHelper;
 import org.eclipse.dltk.internal.debug.core.model.ScriptDebugTarget;
+import org.eclipse.dltk.internal.debug.core.model.ScriptThread;
 import org.eclipse.dltk.internal.launching.InterpreterMessages;
 import org.eclipse.dltk.launching.AbstractScriptLaunchConfigurationDelegate;
-import org.eclipse.dltk.launching.ScriptLaunchConfigurationConstants;
 import org.eclipse.dltk.launching.ScriptRuntime;
+import org.eclipse.jdt.debug.core.IJavaMethodBreakpoint;
+import org.eclipse.jdt.debug.core.JDIDebugModel;
 import org.eclipse.jdt.internal.launching.JavaSourceLookupDirector;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.eclipse.jdt.launching.JavaLaunchDelegate;
+import org.w3c.dom.Element;
 
 import com.yoursway.hello.core.HelloNature;
 
@@ -72,7 +81,12 @@ public class HelloLaunchConfigurationDelegate extends
 				"com.yoursway.hello.Hello");
 		wc.setAttribute(
 				IJavaLaunchConfigurationConstants.ATTR_PROGRAM_ARGUMENTS,
-				getScriptLaunchPath(configuration) + " " + mode + " " + DLTKDebugPlugin.getDefault().getDbgpService().getPort() + " " + sessionId);		
+				getScriptLaunchPath(configuration)
+						+ " "
+						+ mode
+						+ " "
+						+ DLTKDebugPlugin.getDefault().getDbgpService()
+								.getPort() + " " + sessionId);
 		ILaunchConfiguration config = wc.doSave();
 
 		javaSourceLookupDirector = new JavaSourceLookupDirector();
@@ -108,19 +122,20 @@ public class HelloLaunchConfigurationDelegate extends
 		launch.addDebugTarget(target);
 		return target;
 	}
-	
+
 	public static final String LAUNCH_ATTR_DEBUGGING_ENGINE_ID = "debugging_engine_id"; //$NON-NLS-1$
 
-	
 	public static final String ENGINE_ID = "com.yoursway.hello.debug.engine"; //$NON-NLS-1$
-	
-    protected String getDebuggingEngineId() {
-        return ENGINE_ID;
-    }
-	
+	private IJavaMethodBreakpoint extLibEntryBreakpoint;
+
+	protected String getDebuggingEngineId() {
+		return ENGINE_ID;
+	}
+
 	@Override
 	public void launch(ILaunchConfiguration configuration, String mode,
-			ILaunch launch, IProgressMonitor monitor) throws CoreException {
+			final ILaunch launch, IProgressMonitor monitor)
+			throws CoreException {
 		sessionId = getSessionId(configuration);
 		launchJava(configuration, mode, launch, monitor);
 		final ISourceLocator oldSourceLocator = launch.getSourceLocator();
@@ -163,30 +178,69 @@ public class HelloLaunchConfigurationDelegate extends
 				launch.setAttribute(LAUNCH_ATTR_DEBUGGING_ENGINE_ID,
 						getDebuggingEngineId());
 
-//				// Configuration
-//				final DbgpInterpreterConfig dbgpConfig = new DbgpInterpreterConfig(
-//						config);
-//
-//				InterpreterConfig newConfig = addEngineConfig(config,
-//						prefDelegate);
+				// // Configuration
+				// final DbgpInterpreterConfig dbgpConfig = new
+				// DbgpInterpreterConfig(
+				// config);
+				//
+				// InterpreterConfig newConfig = addEngineConfig(config,
+				// prefDelegate);
 
 				// Starting debugging engine
 				IProcess process = launch.getProcesses()[0];
-//				try {
-//					DebugEventHelper.fireExtendedEvent(null,
-//							ExtendedDebugEventDetails.BEFORE_VM_STARTED);
-//
-//					// Running
-//					monitor
-//							.subTask(InterpreterMessages.DebuggingEngineRunner_running);
-////					process = rawRun(launch, newConfig);
-//				} catch (CoreException e) {
-//					abort(InterpreterMessages.errDebuggingEngineNotStarted, e);
-//				}
-//				monitor.worked(4);
+				// try {
+				// DebugEventHelper.fireExtendedEvent(null,
+				// ExtendedDebugEventDetails.BEFORE_VM_STARTED);
+				//
+				// // Running
+				// monitor
+				// .subTask(InterpreterMessages.DebuggingEngineRunner_running);
+				// // process = rawRun(launch, newConfig);
+				// } catch (CoreException e) {
+				// abort(InterpreterMessages.errDebuggingEngineNotStarted, e);
+				// }
+				// monitor.worked(4);
 
 				// Waiting for debugging engine connect
 				waitDebuggerConnected(process, launch, monitor);
+
+				ScriptThread thread = (ScriptThread) target.getThreads()[0];
+				final IDbgpSession session = thread.getDbgpSession();
+				IDbgpNotificationManager nm = session.getNotificationManager();
+				nm.addNotificationListener(new IDbgpNotificationListener() {
+
+					public void dbgpNotify(IDbgpNotification notification) {
+						if ("lib_call_coming".equalsIgnoreCase(notification
+								.getName())) {
+							Element body = notification.getBody();
+							String className = body.getAttribute("class");
+							String methodName = body.getAttribute("method");
+
+							try {
+								extLibEntryBreakpoint = JDIDebugModel
+										.createMethodBreakpoint(ResourcesPlugin
+												.getWorkspace().getRoot(),
+												className,
+												methodName, //$NON-NLS-1$
+												"()V", //$NON-NLS-1$
+												true, false, false, -1, -1, -1,
+												1, false, new HashMap());
+								extLibEntryBreakpoint.setPersisted(false);
+								extLibEntryBreakpoint.setEnabled(true);
+
+								launch.getDebugTarget().breakpointAdded(
+										extLibEntryBreakpoint);
+
+								session.getExtendedCommands().execute("doitbaby");
+							} catch (CoreException e) {
+								e.printStackTrace();
+							} catch (DbgpException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+
+				});
 			} catch (CoreException e) {
 				launch.terminate();
 				throw e;
@@ -196,7 +250,7 @@ public class HelloLaunchConfigurationDelegate extends
 			// Happy debugging :)
 		}
 	}
-	
+
 	/**
 	 * Waiting debugging process to connect to current launch
 	 * 
