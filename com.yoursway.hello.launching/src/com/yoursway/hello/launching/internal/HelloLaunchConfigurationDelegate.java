@@ -15,7 +15,10 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.debug.core.DebugEvent;
+import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.IDebugEventSetListener;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationType;
@@ -45,6 +48,10 @@ import org.eclipse.dltk.launching.AbstractScriptLaunchConfigurationDelegate;
 import org.eclipse.dltk.launching.ScriptRuntime;
 import org.eclipse.jdt.debug.core.IJavaMethodBreakpoint;
 import org.eclipse.jdt.debug.core.JDIDebugModel;
+import org.eclipse.jdt.internal.debug.core.IJDIEventListener;
+import org.eclipse.jdt.internal.debug.core.model.JDIDebugTarget;
+import org.eclipse.jdt.internal.debug.core.model.JDIStackFrame;
+import org.eclipse.jdt.internal.debug.core.model.JDIThread;
 import org.eclipse.jdt.internal.launching.JavaSourceLookupDirector;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.eclipse.jdt.launching.JavaLaunchDelegate;
@@ -149,6 +156,34 @@ public class HelloLaunchConfigurationDelegate extends
 			}
 
 		});
+		
+		JDIDebugTarget debugTarget = (JDIDebugTarget) launch.getDebugTarget();
+		IThread mainJavaThread = debugTarget.getThreads()[0];
+		DebugPlugin.getDefault().addDebugEventListener(new IDebugEventSetListener() {
+
+			public void handleDebugEvents(DebugEvent[] events) {
+				for (DebugEvent ev : events) {
+					if (ev.getKind() == DebugEvent.SUSPEND) {
+						if (ev.getSource() instanceof JDIThread) {
+							JDIThread thread = (JDIThread) ev.getSource();
+							try {
+								IStackFrame[] stackFrames = thread.getStackFrames();
+								JDIStackFrame firstFrame = (JDIStackFrame) stackFrames[0];
+								if (!firstFrame.getReceivingTypeName().startsWith("com.yoursway.hello.Test")) {
+									thread.resume();
+								}
+							} catch (DebugException e) {
+								e.printStackTrace();
+							}
+							
+						}
+					}
+				}
+			}
+			
+		});
+//		debugTarget.addJDIEventListener(new IJDIEventListener() {}, request)
+//		mainJavaThread.resume();
 
 		// interpreter is already launched, so we just need to setup the dbgp
 		// session
