@@ -1,3 +1,4 @@
+
 package com.yoursway.hello;
 
 import java.io.BufferedReader;
@@ -34,6 +35,8 @@ public class Hello {
 	private static String lastRunCommand;
 	private static int lastRunTransactionId;
 
+	private static String fileName;
+
 	private static void hello(String className, String methodName) throws IOException {
 		System.out.println(String.format("Invoking %s in %s", methodName, className));
 		sendStatus(lastRunCommand, lastRunTransactionId, "break");
@@ -69,7 +72,7 @@ public class Hello {
 			usage();
 			return;
 		}
-		String file = args[0];
+		fileName = args[0];
 		String runMode = args[1];
 		boolean isDebug = runMode.equals("debug");
 		int port;
@@ -82,10 +85,10 @@ public class Hello {
 			port = Integer.parseInt(args[2]);
 			sessionId = args[3];
 
-			connectToDbgpServer(port, sessionId, file);
+			connectToDbgpServer(port, sessionId, fileName);
 		}
 		try {
-			FileReader fileReader = new FileReader(file);
+			FileReader fileReader = new FileReader(fileName);
 			BufferedReader reader = new BufferedReader(fileReader);
 			try {
 				lineNo = 0;
@@ -202,6 +205,12 @@ public class Hello {
 					.format(
 							"<response command=\"%s\" transaction_id=\"%d\" feature_name=\"%s\" supported=\"0\" />",
 							command, transactionId, values.get("-n")));
+		} else if (command.equalsIgnoreCase("stack_get")) {
+			sendPacket(String
+					.format(
+							"<response command=\"%s\" transaction_id=\"%d\">" +
+							"<stack level=\"0\" filename=\"%s\" lineno=\"%d\" where=\"toplevel:%d\" /></response>",
+							command, transactionId, fileName, lineNo, lineNo));
 		} else if (command.equalsIgnoreCase("run")) {
 			lastRunCommand = command;
 			lastRunTransactionId = transactionId;
