@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+  <extension point="org.eclipse.core.runtime.preferences">
+    <initializer 
+      class="com.yoursway.hello.debug.HelloDebugPreferenceInitializer"/>
+  </extension> 
+
+   <extension
+         point="org.eclipse.dltk.debug.scriptDebugModel">
+      <debugModel
+            debugModelId="com.yoursway.hello.debug.helloModel"
+            natureId="com.yoursway.hello.core.nature"
+            typeFactory="com.yoursway.hello.debug.HelloTypeFactory">
+      </debugModel>
+   </extension>
+  
+   <extension
+         point="org.eclipse.dltk.launching.debuggingEngine">
+      <engineContribution
+            natureId="com.yoursway.hello.core.nature">
+            <engine
+        class="com.yoursway.hello.debug.HelloBasicDebuggerRunnerFactory"
+        description="Hello Debuggin Engine"
+        id="com.yoursway.hello.debug.engine"
+        name="Hello Debuggin Engine"
+        propertyPageId="com.yoursway.hello.propertyPage.debug.engines.basicdebugger"
+        preferencePageId="com.yoursway.hello.preferences.debug.engines.basicdebugger"
+        priority="0">
+      </engine>
+         <selector
+               class="com.yoursway.hello.debug.HelloDebuggingEngineSelector">
+         </selector>
+      </engineContribution>
+     
+   </extension>
+  
+</plugin>

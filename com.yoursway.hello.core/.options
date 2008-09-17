@@ -1,0 +1,2 @@
+com.esko.dtl.core/dumpErrorsToConsole = true
+com.esko.dtl.core/traceGoals = true

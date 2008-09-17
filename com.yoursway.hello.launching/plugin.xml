@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+      <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="com.yoursway.hello.launching.internal.HelloLaunchingPluginPreferenceInitializer">
+      </initializer>
+   </extension>
+   
+  <extension
+         point="org.eclipse.debug.core.launchConfigurationTypes">
+         <launchConfigurationType
+               delegate="com.yoursway.hello.launching.internal.HelloLaunchConfigurationDelegate"
+               id="com.yoursway.hello.launching.HelloLaunchConfigurationType"
+               modes="run,debug"
+               name="Hello Application"
+               public="true"
+               sourceLocatorId="helloSourceLocator"
+               sourcePathComputerId="helloSourcePathComputer" />                
+   </extension>
+
+   <extension 
+        point="org.eclipse.debug.core.sourcePathComputers">
+        <sourcePathComputer
+            class="org.eclipse.dltk.launching.sourcelookup.ScriptSourcePathComputer"
+            id="helloSourcePathComputer"/>
+   </extension>
+  
+     <extension
+         point="org.eclipse.dltk.launching.interpreterInstallTypes">
+          <interpreterInstallType
+            class="com.yoursway.hello.launching.internal.HelloGenericInstallType"
+            id="com.yoursway.hello.launching.HelloGenericInstallType"/>
+   </extension>
+   
+      <extension
+        point="org.eclipse.debug.core.sourceLocators">
+        <sourceLocator
+           class="org.eclipse.dltk.launching.sourcelookup.ScriptSourceLookupDirector"
+           id="helloSourceLocator"
+           name="HelloSourceLocator.name" />
+   </extension>
+    
+</plugin>

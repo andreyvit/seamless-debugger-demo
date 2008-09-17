@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <wizard
+            class="com.yoursway.hello.ui.HelloProjectWizard"            
+            id="com.yoursway.hello.ui.helloProjectWizard"
+            name="Hello Project"
+            project="true">
+      </wizard>    
+   </extension>
+   <extension
+         point="org.eclipse.ui.perspectives">
+      <perspective
+            class="com.yoursway.hello.ui.HelloPerspective"            
+            id="com.yoursway.hello.ui.perspective"
+            name="Hello Perspective">
+      </perspective>
+   </extension>
+
+	 <extension point="org.eclipse.core.runtime.preferences">
+        <initializer class="com.yoursway.hello.ui.HelloUIPreferenceInitializer"/>
+    </extension>
+
+	<extension
+	     point="org.eclipse.ui.editors">
+	  <editor
+         class="com.yoursway.hello.ui.HelloEditor"
+         contributorClass="org.eclipse.dltk.internal.ui.editor.SourceModuleEditorActionContributor"
+         default="true"
+         extensions="hello"
+         id="com.yoursway.hello.ui.Editor"
+         name="Hello Editor">      
+   </editor>
+  
+	 </extension>
+ <extension
+       point="org.eclipse.dltk.ui.language">
+    <language
+          class="com.yoursway.hello.ui.HelloUILanguageToolkit"
+          nature="com.yoursway.hello.core.nature"
+          priority="0">
+    </language>
+ </extension>
+ 
+ <extension
+       point="org.eclipse.ui.contexts">
+    <context
+          id="com.yoursway.hello.ui.helloEditorContext"
+          name="Hello Editor Context"
+          parentId="org.eclipse.dltk.ui.scriptEditorScope">
+    </context>
+ </extension>
+ 
+ 
+ <extension
+      point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="HelloActionSet.label"
+            description="HelloActionSet.description"
+            visible="true"
+            id="com.yoursway.hello.ui.HelloActionSet">
+      </actionSet>
+  </extension>
+ 
+<extension
+       point="org.eclipse.ui.preferencePages">    
+       <page
+              class="com.yoursway.hello.ui.HelloGlobalPreferencesPage"
+              id="com.yoursway.hello.preferences"
+              name="Hello"/>
+                  
+    </extension>
+
+<extension
+       point="org.eclipse.ui.propertyPages">
+    <page
+          category="com.yoursway.hello.propertyPage"
+          class="com.yoursway.hello.ui.HelloBuildPathPropertyPage"
+          id="com.yoursway.hello.ui.BuildpathProperties"
+          name="Build paths">
+      <enabledWhen>
+        <adapt type="org.eclipse.core.resources.IProject">
+          <test property="org.eclipse.core.resources.projectNature" value="com.yoursway.hello.core.nature"/>
+        </adapt>         
+      </enabledWhen>      
+    </page>    
+    
+    <page
+      name="Hello"
+      class="com.yoursway.hello.ui.HelloPropertyPage"
+      id="com.yoursway.hello.propertyPage">
+      <enabledWhen>
+        <adapt type="org.eclipse.core.resources.IProject">
+          <test property="org.eclipse.core.resources.projectNature" value="com.yoursway.hello.core.nature"/>
+        </adapt>         
+      </enabledWhen>
+    </page>    
+      
+ </extension> 
+
+</plugin>

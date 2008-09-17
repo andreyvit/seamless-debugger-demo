@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+   <extension
+         id="nature"
+         name="Hello Language Nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="com.yoursway.hello.core.HelloNature">
+         </run>
+      </runtime>
+   </extension>
+   <extension
+         point="org.eclipse.dltk.core.language">
+      <language
+            class="com.yoursway.hello.core.HelloLanguage"
+            nature="com.yoursway.hello.core.nature">
+      </language>
+   </extension>
+   <extension
+         point="org.eclipse.dltk.core.sourceElementParsers">
+      <parser
+            class="com.yoursway.hello.core.parser.HelloSourceElementParser"
+            nature="com.yoursway.hello.core.nature">
+      </parser>
+   </extension>
+   <extension
+         point="org.eclipse.dltk.core.sourceParsers">
+      <parserContribution
+            natureId="com.yoursway.hello.core.nature">
+         <parser
+               class="com.yoursway.hello.core.parser.HelloSourceParser"
+               description="com.yoursway.hello.core.parser1"
+               id="com.yoursway.hello.core.parser1"
+               name="com.yoursway.hello.core.parser1"
+               priority="0">
+         </parser>
+      </parserContribution>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.contentTypes">
+      <content-type
+            file-extensions="hello"
+            id="com.yoursway.hello.core.content-type"
+            name="Hello File"
+            priority="normal">
+      </content-type>      
+   </extension>
+   
+
+</plugin>

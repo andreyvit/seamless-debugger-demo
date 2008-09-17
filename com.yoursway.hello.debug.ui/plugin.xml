@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+    <extension point="org.eclipse.ui.commands">
+        <command name="Hello Application"
+            description="Hello Application"
+            categoryId="org.eclipse.debug.ui.category.run"
+            id="com.yoursway.hello.debug.ui.launchShortcut.run">
+        </command>
+        <command name="Hello Application"
+            description="Hello Application"
+            categoryId="org.eclipse.debug.ui.category.run"
+            id="com.yoursway.hello.debug.ui.launchShortcut.debug">
+        </command>
+    </extension>
+  
+    <extension point="org.eclipse.ui.editorActions">
+        <editorContribution
+            targetID="com.yoursway.hello.ui.Editor"
+            id="com.yoursway.hello.ui.HelloEditor.BreakpointRulerActions">
+
+            <action label="Toggle &amp;Breakpoint"
+                class="org.eclipse.debug.ui.actions.RulerToggleBreakpointActionDelegate"
+                style="push" actionID="RulerDoubleClick"
+                id="HelloEditor.doubleClickBreakpointAction" />
+        </editorContribution>       
+    </extension>
+    
+    <extension point="org.eclipse.ui.actionSetPartAssociations">
+        <actionSetPartAssociation
+            targetID="org.eclipse.debug.ui.launchActionSet">
+            <part id="com.yoursway.hello.ui.Editor" />
+        </actionSetPartAssociation>
+        <actionSetPartAssociation
+            targetID="org.eclipse.debug.ui.launchActionSet">
+            <part id="org.eclipse.dltk.ui.ScriptExplorer" />
+            <part id="com.yoursway.hello.ui.Editor" />
+        </actionSetPartAssociation>
+    </extension>
+
+    <extension point="org.eclipse.ui.preferencePages">
+      <page 
+        category="com.yoursway.hello.preferences"
+        class="com.yoursway.hello.debug.ui.internal.interpreters.HelloInterpreterPreferencePage"
+        id="com.yoursway.hello.preferences.interpreters"
+        name="Interpreters" />
+      
+    </extension>
+
+
+    <extension
+        point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+        <launchConfigurationTypeImage icon="icons/obj16/dtl_obj.gif"
+            configTypeID="com.yoursway.hello.launching.HelloLaunchConfigurationType"
+            id="com.yoursway.hello.debug.ui.launchConfigurationTypeImage">
+        </launchConfigurationTypeImage>            
+    </extension>
+
+    <extension
+        point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+        <launchConfigurationTabGroup
+            class="com.yoursway.hello.debug.ui.internal.configurations.HelloTabGroup"
+            id="com.yoursway.hello.debug.ui.HelloTabGroup"
+            type="com.yoursway.hello.launching.HelloLaunchConfigurationType">
+        </launchConfigurationTabGroup> 
+        
+                 
+    </extension>
+
+    <extension point="org.eclipse.debug.ui.launchShortcuts">
+        <shortcut
+            class="com.yoursway.hello.debug.ui.internal.HelloLaunchShortcut"
+            description="HelloLaunchShortcut.description"
+            icon="icons/obj16/dtl_obj.gif"
+            id="com.yoursway.hello.debug.ui.launchShortcut"
+            label="HelloLaunchShortcut.name" modes="run, debug">
+            <description
+                description="HelloLaunchShortcut.runDescription" mode="run">
+            </description>
+            <description
+                description="HelloLaunchShortcut.debugDescription" mode="debug">
+            </description>
+            <contextualLaunch>
+                <enablement>
+                    <with variable="selection">
+                        <count value="1" />
+                        <iterate>
+                            <or>
+                                <test
+                                    args="com.yoursway.hello.core.nature"
+                                    property="org.eclipse.dltk.launching.hasProjectNature" />
+                            </or>
+                        </iterate>
+                    </with>
+                </enablement>
+                <contextLabel label="HelloLaunchShortcut.runName"
+                    mode="run">
+                </contextLabel>
+                <contextLabel label="HelloLaunchShortcut.debugName"
+                    mode="debug">
+                </contextLabel>
+            </contextualLaunch>
+        </shortcut>
+    </extension>
+
+    <extension point="org.eclipse.dltk.ui.buildpathContainerPage">
+        <buildpathContainerPath
+            class="com.yoursway.hello.debug.ui.internal.interpreters.HelloInterpreterContainerWizardPage"
+            id="com.yoursway.hello.launching.INTERPRETER_CONTAINER"
+            name="Hello Interpreter Libraries"
+            nature="com.yoursway.hello.core.nature" />
+    </extension>
+
+   <extension
+         point="org.eclipse.ui.contexts">
+      <context
+            name="Debugging Hello"
+            description="Debugging Hello"
+            id="com.yoursway.hello.debugging"
+            parentId="org.eclipse.debug.ui.debugging">
+      </context>
+   </extension>
+   
+   <extension
+         point="org.eclipse.debug.ui.debugModelContextBindings">
+      <modelContextBinding
+            debugModelId="com.yoursway.hello.debug.model"
+            contextId="com.yoursway.hello.debugging">
+      </modelContextBinding>
+   </extension>
+
+    <extension point="org.eclipse.core.runtime.adapters">
+       <factory
+          adaptableType="com.yoursway.hello.ui.HelloEditor"
+          class="com.yoursway.hello.debug.ui.internal.HelloEditorDebugAdapterFactory">
+           <adapter type="org.eclipse.debug.ui.actions.IToggleBreakpointsTarget"/>
+           <adapter type="org.eclipse.debug.ui.actions.IRunToLineTarget"/>
+       </factory>
+    </extension>
+    
+    <extension point="org.eclipse.ui.popupMenus">
+        <viewerContribution
+            id="com.yoursway.hello.debug.ui.rulerContribution"
+            targetID="#HelloRulerContext">
+
+            <action label="%EnableDisableBreakpoint.label"
+                id="com.yoursway.hello.debug.ui.actions.RulerEnableDisableBreakpointActionDelegate"
+                class="org.eclipse.debug.ui.actions.RulerEnableDisableBreakpointActionDelegate"
+                menubarPath="debug">
+            </action>
+
+            <action label="%ToggleBreakpoint.label"
+                id="com.yoursway.hello.debug.ui.ui.actions.RulerToggleBreakpointActionDelegate"
+                class="org.eclipse.debug.ui.actions.RulerToggleBreakpointActionDelegate"
+                menubarPath="debug">
+            </action>
+
+            <action
+                class="org.eclipse.dltk.debug.ui.actions.ScriptBreakpointPropertiesRulerActionDelegate"
+                id="com.yoursway.hello.debug.ui.ScriptBreakpointPropertiesRulerActionDelegate"
+                label="%BreakpointProperties.label" 
+                menubarPath="group.properties" />
+        </viewerContribution>
+    </extension>
+    
+    <extension
+          point="org.eclipse.debug.ui.debugModelPresentations">
+       <debugModelPresentation
+             class="com.yoursway.hello.debug.ui.internal.model.HelloModelPresentation"
+             id="com.yoursway.hello.debug.model">
+       </debugModelPresentation>
+    </extension>
+    
+    <extension
+          point="org.eclipse.ui.commands">
+       <category
+             id="com.yoursway.hello.debug.ui.commands.category"
+             name="Hello Debug">
+       </category>      
+    </extension>
+    
+    
+    <extension point="org.eclipse.ui.preferencePages">
+      
+      <page 
+        category="com.yoursway.hello.preferences"
+        class="com.yoursway.hello.debug.preferences.HelloDebugPreferencePage"
+        id="com.yoursway.hello.preferences.debug" 
+        name="HelloDebugPreferencePage.name" />
+      <page
+        category="com.yoursway.hello.preferences.debug"
+        class="com.yoursway.hello.debug.preferences.HelloDebuggingEnginePreferencePage"
+        id="org.eclipse.dltk.ruby.preferences.debug.engines"
+        name="HelloDebuggingEnginePreferencePage.name" />
+    </extension>
+
+    <extension point="org.eclipse.ui.propertyPages">
+      <page
+        class="com.yoursway.hello.debug.preferences.HelloDebugPreferencePage"
+        category="com.yoursway.hello.propertyPage"
+        id="com.yoursway.hello.propertyPage.debug"
+        name="%Debug.PropertyPage">
+        <enabledWhen>
+          <adapt type="org.eclipse.core.resources.IProject">
+            <test property="org.eclipse.core.resources.projectNature" value="com.yoursway.hello.core.nature"/>
+          </adapt>         
+        </enabledWhen>
+      </page>    
+      <page
+        class="com.yoursway.hello.debug.preferences.HelloDebuggingEnginePreferencePage"
+        category="com.yoursway.hello.propertyPage.debug"
+        id="com.yoursway.hello.propertyPage.debug.engines"
+        name="%Engines.PropertyPage">
+        <enabledWhen>
+          <adapt type="org.eclipse.core.resources.IProject">
+            <test property="org.eclipse.core.resources.projectNature" value="com.yoursway.hello.core.nature"/>
+          </adapt>         
+        </enabledWhen>
+      </page> 
+    </extension>   
+  
+  <extension
+    point="org.eclipse.core.runtime.preferences">
+    <initializer
+      class="com.yoursway.hello.debug.preferences.HelloBasicDebuggerPreferenceInitializer" />
+  </extension>
+    
+  <extension
+    point="org.eclipse.ui.preferencePages">
+    <page
+      category="com.yoursway.hello.preferences.debug"
+      class="com.yoursway.hello.debug.preferences.HelloBasicDebuggerPreferencePage"
+      id="com.yoursway.hello.debug.preferences.debug.engines.basicdebugger"
+      name="Hello Debugger Preferences">
+    </page>
+  </extension>
+
+  <extension
+    point="org.eclipse.ui.propertyPages">
+    <page
+      class="com.yoursway.hello.debug.preferences.HelloBasicDebuggerPreferencePage"
+      category="com.yoursway.hello.propertyPage.debug.engines"
+      id="com.yoursway.hello.debug.propertyPage.debug.engines.basicdebugger"
+      name="Hello Debugger">
+      <enabledWhen>
+        <adapt
+          type="org.eclipse.core.resources.IProject">
+          <test
+            property="org.eclipse.core.resources.projectNature"
+            value="com.yoursway.hello.core.nature" />
+        </adapt>
+      </enabledWhen>
+    </page>
+  </extension>
+
+</plugin>
