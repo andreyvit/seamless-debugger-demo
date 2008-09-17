@@ -9,7 +9,9 @@
  *******************************************************************************/
 package com.yoursway.hello.launching.internal;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -18,6 +20,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.IDebugEventFilter;
 import org.eclipse.debug.core.IDebugEventSetListener;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
@@ -42,13 +45,13 @@ import org.eclipse.dltk.debug.core.IDbgpService;
 import org.eclipse.dltk.debug.core.ScriptDebugManager;
 import org.eclipse.dltk.debug.core.model.IScriptDebugTarget;
 import org.eclipse.dltk.internal.debug.core.model.ScriptDebugTarget;
+import org.eclipse.dltk.internal.debug.core.model.ScriptStackFrame;
 import org.eclipse.dltk.internal.debug.core.model.ScriptThread;
 import org.eclipse.dltk.internal.launching.InterpreterMessages;
 import org.eclipse.dltk.launching.AbstractScriptLaunchConfigurationDelegate;
 import org.eclipse.dltk.launching.ScriptRuntime;
 import org.eclipse.jdt.debug.core.IJavaMethodBreakpoint;
 import org.eclipse.jdt.debug.core.JDIDebugModel;
-import org.eclipse.jdt.internal.debug.core.IJDIEventListener;
 import org.eclipse.jdt.internal.debug.core.model.JDIDebugTarget;
 import org.eclipse.jdt.internal.debug.core.model.JDIStackFrame;
 import org.eclipse.jdt.internal.debug.core.model.JDIThread;
@@ -123,10 +126,60 @@ public class HelloLaunchConfigurationDelegate extends
 	protected IScriptDebugTarget addDebugTarget(ILaunch launch,
 			IDbgpService dbgpService) throws CoreException {
 
-		final IScriptDebugTarget target = new ScriptDebugTarget(
-				getDebugModelId(), dbgpService, sessionId, launch, null);
+		final HelloDebugTarget target = new HelloDebugTarget(getDebugModelId(),
+				dbgpService, sessionId, launch, null);
 
 		launch.addDebugTarget(target);
+
+		DebugPlugin.getDefault().addDebugEventFilter(new IDebugEventFilter() {
+
+			public DebugEvent[] filterDebugEvents(DebugEvent[] events) {
+				List<DebugEvent> newEvents = new ArrayList<DebugEvent>();
+				for (DebugEvent event : events) {
+					newEvents.add(event);
+					DebugEvent newEvent = wrap(event);
+					if (newEvent != null)
+						newEvents.add(newEvent);
+				}
+				return newEvents.toArray(new DebugEvent[newEvents.size()]);
+			}
+
+			private DebugEvent wrap(DebugEvent event) {
+				System.out.println("EVENT: " + event);
+				Object source = event.getSource();
+				Object newSource = wrap(target, source);
+				if (newSource == null)
+					return null;
+				Object data = event.getData();
+				event = new DebugEvent(newSource, event.getKind(), event.getDetail());
+				if (data != null)
+					System.out.println();
+				event.setData(data);
+				return event;
+			}
+
+			private Object wrap(final HelloDebugTarget target, Object source) {
+				Object newSource = null;
+				if (source instanceof ScriptStackFrame)
+					newSource = wrapFrame(target, (ScriptStackFrame) source);
+				else if (source instanceof ScriptThread)
+					newSource = wrapThread(target, (IThread) source);
+				return newSource;
+			}
+
+			private ScriptProxyFrame wrapFrame(final HelloDebugTarget target,
+					ScriptStackFrame frame) {
+				return new ScriptProxyFrame(wrapThread(target, frame
+						.getThread()), frame);
+			}
+
+			private ScriptProxyThread wrapThread(final HelloDebugTarget target,
+					IThread thread) {
+				return new ScriptProxyThread(thread, target);
+			}
+
+		});
+
 		return target;
 	}
 
@@ -156,43 +209,50 @@ public class HelloLaunchConfigurationDelegate extends
 			}
 
 		});
-		
+
 		JDIDebugTarget debugTarget = (JDIDebugTarget) launch.getDebugTarget();
 		IThread mainJavaThread = debugTarget.getThreads()[0];
-		DebugPlugin.getDefault().addDebugEventListener(new IDebugEventSetListener() {
+		DebugPlugin.getDefault().addDebugEventListener(
+				new IDebugEventSetListener() {
 
-			public void handleDebugEvents(DebugEvent[] events) {
-				for (DebugEvent ev : events) {
-					if (ev.getKind() == DebugEvent.SUSPEND) {
-						if (ev.getSource() instanceof JDIThread) {
-							JDIThread thread = (JDIThread) ev.getSource();
-							try {
-								IStackFrame[] stackFrames = thread.getStackFrames();
-								boolean found = false;
-								for (int i = 0; i < stackFrames.length; i++) {
-									JDIStackFrame frame = (JDIStackFrame) stackFrames[i];
-									String typeName = frame.getReceivingTypeName();
-									if (typeName.startsWith("sun.") || typeName.startsWith("java."))
-										continue;
-									if (typeName.startsWith("com.yoursway.hello.interpreter."))
-										found = true;
-									break;
+					public void handleDebugEvents(DebugEvent[] events) {
+						for (DebugEvent ev : events) {
+							if (ev.getKind() == DebugEvent.SUSPEND) {
+								if (ev.getSource() instanceof JDIThread) {
+									JDIThread thread = (JDIThread) ev
+											.getSource();
+									try {
+										IStackFrame[] stackFrames = thread
+												.getStackFrames();
+										boolean found = false;
+										for (int i = 0; i < stackFrames.length; i++) {
+											JDIStackFrame frame = (JDIStackFrame) stackFrames[i];
+											String typeName = frame
+													.getReceivingTypeName();
+											if (typeName.startsWith("sun.")
+													|| typeName
+															.startsWith("java."))
+												continue;
+											if (typeName
+													.startsWith("com.yoursway.hello.interpreter."))
+												found = true;
+											break;
+										}
+										if (found) {
+											thread.resume();
+										}
+									} catch (DebugException e) {
+										e.printStackTrace();
+									}
+
 								}
-								if (found) {
-									thread.resume();
-								}
-							} catch (DebugException e) {
-								e.printStackTrace();
 							}
-							
 						}
 					}
-				}
-			}
-			
-		});
-//		debugTarget.addJDIEventListener(new IJDIEventListener() {}, request)
-//		mainJavaThread.resume();
+
+				});
+		// debugTarget.addJDIEventListener(new IJDIEventListener() {}, request)
+		// mainJavaThread.resume();
 
 		// interpreter is already launched, so we just need to setup the dbgp
 		// session
@@ -248,7 +308,8 @@ public class HelloLaunchConfigurationDelegate extends
 				// Waiting for debugging engine connect
 				waitDebuggerConnected(process, launch, monitor);
 
-				ScriptThread thread = (ScriptThread) target.getThreads()[0];
+				ScriptThread thread = (ScriptThread) ((HelloDebugTarget) target)
+						.getOriginalThreads()[0];
 				final IDbgpSession session = thread.getDbgpSession();
 				IDbgpNotificationManager nm = session.getNotificationManager();
 				nm.addNotificationListener(new IDbgpNotificationListener() {
@@ -275,7 +336,8 @@ public class HelloLaunchConfigurationDelegate extends
 								launch.getDebugTarget().breakpointAdded(
 										extLibEntryBreakpoint);
 
-								session.getExtendedCommands().execute("doitbaby");
+								session.getExtendedCommands().execute(
+										"doitbaby");
 							} catch (CoreException e) {
 								e.printStackTrace();
 							} catch (DbgpException e) {
